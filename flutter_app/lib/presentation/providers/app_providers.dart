@@ -17,6 +17,9 @@ import 'package:flow_desk/domain/usecases/task/task_usecases.dart';
 final secureStorageProvider = Provider<FlutterSecureStorage>(
   (_) => const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
   ),
 );
 
@@ -100,7 +103,12 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref _ref;
-  AuthNotifier(this._ref) : super(const AuthState());
+  AuthNotifier(this._ref) : super(const AuthState()) {
+    _ref.read(apiClientProvider).onUnauthorized = () async {
+      await _ref.read(logoutUseCaseProvider).call();
+      state = const AuthState();
+    };
+  }
 
   Future<bool> login({required String email, required String password}) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
@@ -144,9 +152,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> loadCurrentUser() async {
     try {
       final isAuth = await _ref.read(isAuthenticatedUseCaseProvider).call();
-      if (!isAuth) { state = const AuthState(); return; }
-      final user = await _ref.read(getCurrentUserUseCaseProvider).call();
-      state = AuthState(user: user);
+      if (!isAuth) {
+        state = const AuthState();
+        return;
+      }
+      try {
+        final user = await _ref.read(getCurrentUserUseCaseProvider).call();
+        state = AuthState(user: user);
+      } catch (_) {
+        final refreshed = await _ref
+            .read(authRepositoryProvider)
+            .refreshSessionIfNeeded();
+        if (refreshed) {
+          final user = await _ref.read(getCurrentUserUseCaseProvider).call();
+          state = AuthState(user: user);
+        } else {
+          state = const AuthState();
+        }
+      }
     } catch (_) {
       state = const AuthState();
     }
