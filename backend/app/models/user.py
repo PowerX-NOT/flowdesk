@@ -7,6 +7,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.database import Base
 
 
+def _enum_values(enum_cls: type[enum.Enum]) -> list[str]:
+    """Store enum values (e.g. 'employee') in MySQL, not member names."""
+    return [member.value for member in enum_cls]
+
+
 class UserRole(str, enum.Enum):
     EMPLOYEE = "employee"
     ADMIN = "admin"
@@ -21,7 +26,9 @@ class User(Base):
     # Store hashed password only — NEVER plaintext
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole), default=UserRole.EMPLOYEE, nullable=False
+        Enum(UserRole, values_callable=_enum_values),
+        default=UserRole.EMPLOYEE,
+        nullable=False,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

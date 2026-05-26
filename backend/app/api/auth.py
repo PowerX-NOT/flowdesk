@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,7 +14,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.user import (
     RefreshTokenRequest,
     Token,
@@ -44,10 +45,24 @@ def register(
             detail="An account with this email already exists.",
         )
 
+    try:
+        hashed_password = hash_password(payload.password)
+    except Exception:
+        logger.exception("Password hashing failed during registration")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to process password. Please try again.",
+        )
+
+    now = datetime.now(timezone.utc)
     user = User(
         name=payload.name,
         email=payload.email,
-        hashed_password=hash_password(payload.password),
+        hashed_password=hashed_password,
+        role=UserRole.EMPLOYEE,
+        is_active=True,
+        created_at=now,
+        updated_at=now,
     )
     db.add(user)
     try:
