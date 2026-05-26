@@ -47,6 +47,7 @@ backend/.env
 backend/.env copy.example
 *.pem
 *.key
+admin-web/.env
 
 # Local git hooks
 .githooks/
