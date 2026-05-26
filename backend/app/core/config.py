@@ -16,20 +16,49 @@ def normalize_database_url(url: str) -> str:
     return url
 
 
+def _env(name: str, *aliases: str) -> str | None:
+    """Read env var, skipping empty values and unresolved Railway template literals."""
+    for key in (name, *aliases):
+        value = os.environ.get(key, "").strip()
+        if not value or "${{" in value:
+            continue
+        return value
+    return None
+
+
+def is_placeholder_database_url(url: str) -> bool:
+    """True if DATABASE_URL was left as docs placeholder or is unusable."""
+    if not url.strip():
+        return True
+    if "${{" in url:
+        return True
+    upper = url.upper()
+    placeholders = (
+        "USER:PASSWORD@HOST",
+        "@HOST:PORT",
+        "YOUR-MYSQL-HOST",
+        "CHANGE_ME",
+        "LOCALHOST",
+    )
+    return any(p in upper for p in placeholders)
+
+
 def database_url_from_railway_mysql() -> str | None:
-    """Build DATABASE_URL from Railway MySQL plugin variables when not set directly."""
-    host = os.environ.get("MYSQLHOST") or os.environ.get("MYSQL_HOST")
-    port = os.environ.get("MYSQLPORT") or os.environ.get("MYSQL_PORT") or "3306"
-    user = os.environ.get("MYSQLUSER") or os.environ.get("MYSQL_USER")
-    password = os.environ.get("MYSQLPASSWORD") or os.environ.get("MYSQL_PASSWORD")
-    database = os.environ.get("MYSQLDATABASE") or os.environ.get("MYSQL_DATABASE")
+    """Build DATABASE_URL from Railway MySQL plugin variables."""
+    raw = _env("MYSQL_URL", "MYSQLURL")
+    if raw:
+        return normalize_database_url(raw)
+
+    host = _env("MYSQLHOST", "MYSQL_HOST")
+    port = _env("MYSQLPORT", "MYSQL_PORT") or "3306"
+    user = _env("MYSQLUSER", "MYSQL_USER")
+    password = _env("MYSQLPASSWORD", "MYSQL_PASSWORD")
+    database = _env("MYSQLDATABASE", "MYSQL_DATABASE")
     if not all([host, user, password, database]):
         return None
     safe_user = quote_plus(user)
     safe_password = quote_plus(password)
-    return (
-        f"mysql+pymysql://{safe_user}:{safe_password}@{host}:{port}/{database}"
-    )
+    return f"mysql+pymysql://{safe_user}:{safe_password}@{host}:{port}/{database}"
 
 
 class Settings(BaseSettings):
@@ -88,14 +117,16 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def resolve_database_url(self) -> "Settings":
+        if is_placeholder_database_url(self.DATABASE_URL):
+            object.__setattr__(self, "DATABASE_URL", "")
         if not self.DATABASE_URL.strip():
             built = database_url_from_railway_mysql()
             if built:
-                object.__setattr__(self, "DATABASE_URL", normalize_database_url(built))
+                object.__setattr__(self, "DATABASE_URL", built)
         if not self.DATABASE_URL.strip():
             raise ValueError(
-                "DATABASE_URL is required, or link a Railway MySQL service "
-                "(MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE)."
+                "Set a real DATABASE_URL or link Railway MySQL so MYSQLHOST, "
+                "MYSQLUSER, MYSQLPASSWORD, and MYSQLDATABASE are available."
             )
         return self
 

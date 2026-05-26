@@ -38,22 +38,24 @@ For **PlanetScale**, use the console connection string, set `DATABASE_SSL=true`,
 
 1. **New** → **GitHub Repo** → select this repository.
 2. Set **Root Directory** to `backend`.
-3. Add **Variables**:
+3. **Link** the MySQL service to the API service (Railway → API service → Variables → **Add Reference**).
 
-| Variable | Example / notes |
-|----------|-----------------|
-| `DATABASE_URL` | `mysql+pymysql://...` or link MySQL (auto-built from `MYSQLHOST`, etc.) |
-| `DATABASE_SSL` | `false` (Railway MySQL) or `true` (PlanetScale) |
+4. Add **Variables** (do **not** leave `DATABASE_URL` as `USER:PASSWORD@HOST:PORT`):
+
+| Variable | Value |
+|----------|--------|
 | `JWT_SECRET_KEY` | `python -c "import secrets; print(secrets.token_hex(32))"` (≥32 chars) |
 | `APP_ENV` | `production` |
-| `ALLOWED_ORIGINS` | optional for mobile-only |
+| `TRUSTED_HOSTS` | `*` |
 | `TRUST_PROXY_HEADERS` | `true` |
-| `TRUSTED_HOSTS` | `*` (required for Railway healthchecks) |
-| `LOG_LEVEL` | `INFO` |
-| `PORT` | Railway sets automatically |
+| `DATABASE_SSL` | `false` |
 
-4. Deploy uses `backend/Dockerfile` or `railway.toml` → runs `alembic upgrade head` then Gunicorn.
-5. Copy the public URL, e.g. `https://flowdesk-api-production.up.railway.app`.
+Optional: `DATABASE_URL` = `${{MySQL.DATABASE_URL}}` via Reference picker only — or omit it and let the app build the URL from `MYSQLHOST`, `MYSQLUSER`, etc.
+
+Remove duplicate manual `MYSQL_*` copies if you use Reference linking (Railway injects `MYSQLHOST` automatically).
+
+5. Deploy uses `backend/Dockerfile` or `railway.toml` → runs `alembic upgrade head` then Gunicorn.
+6. Copy the public URL, e.g. `https://flowdesk-api-production.up.railway.app`.
 
 ### Verify backend
 
