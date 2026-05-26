@@ -77,23 +77,18 @@ python scripts/init_db.py --seed-admin \
 
 ## 3. Flutter — production build
 
-Set your Railway HTTPS URL (include `/api/v1`):
+Set your Railway HTTPS URL in `.env` (include `/api/v1`):
 
 ```bash
 cd flutter_app
+cp .env.example .env
+# Edit .env:
+#   API_BASE_URL=https://YOUR_RAILWAY_URL/api/v1
 flutter pub get
 
-# Android APK
-flutter build apk --release \
-  --dart-define=API_BASE_URL=https://YOUR_RAILWAY_URL/api/v1
-
-# Android App Bundle (Play Store)
-flutter build appbundle --release \
-  --dart-define=API_BASE_URL=https://YOUR_RAILWAY_URL/api/v1
-
-# iOS (on macOS with Xcode)
-flutter build ios --release \
-  --dart-define=API_BASE_URL=https://YOUR_RAILWAY_URL/api/v1
+flutter build apk --release
+flutter build appbundle --release   # Play Store
+flutter build ios --release         # macOS + Xcode
 ```
 
 APK output: `flutter_app/build/app/outputs/flutter-apk/app-release.apk`
@@ -125,7 +120,7 @@ See `backend/.env.example` for the full list (set in Railway Variables — not a
 - [ ] `APP_ENV=production` on Railway
 - [ ] `/health` returns `database: connected`
 - [ ] Alembic migrations applied (`alembic upgrade head` on deploy)
-- [ ] Flutter built with `--dart-define=API_BASE_URL=https://...`
+- [ ] `flutter_app/.env` has `API_BASE_URL=https://...` (from `.env.example`)
 - [ ] Register/login on a **physical device** on cellular Wi‑Fi
 - [ ] Create, edit, delete tasks end-to-end
 - [ ] Token persists after app restart; expired JWT triggers re-login or refresh

@@ -1,26 +1,31 @@
-/// Production API configuration — injected at build time via --dart-define.
-///
-/// ```bash
-/// flutter build apk --release \
-///   --dart-define=API_BASE_URL=https://your-app.up.railway.app/api/v1
-/// ```
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+/// API configuration loaded from `flutter_app/.env` at startup.
 class AppConfig {
   AppConfig._();
 
-  static const String apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'https://YOUR_RAILWAY_APP.up.railway.app/api/v1',
-  );
+  static const String _apiBaseUrlKey = 'API_BASE_URL';
 
   static const int connectTimeoutSeconds = 20;
   static const int receiveTimeoutSeconds = 20;
   static const int maxRetryAttempts = 3;
 
+  /// HTTPS API base URL including `/api/v1` — from `.env`.
+  static String get apiBaseUrl {
+    final url = dotenv.env[_apiBaseUrlKey]?.trim();
+    if (url == null || url.isEmpty) {
+      throw StateError(
+        '$_apiBaseUrlKey is missing. Copy .env.example to .env and set your Railway URL.',
+      );
+    }
+    return url;
+  }
+
   /// Release builds must target the hosted HTTPS API.
   static void assertProductionUrl() {
     assert(
       apiBaseUrl.startsWith('https://'),
-      'API_BASE_URL must be an HTTPS URL (your Railway deployment).',
+      'API_BASE_URL in .env must be an HTTPS URL (your Railway deployment).',
     );
   }
 }

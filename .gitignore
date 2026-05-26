@@ -17,6 +17,7 @@ env/
 # (keep migrations, ignore pycache inside)
 
 # Flutter / Dart
+flutter_app/.env
 flutter_app/.dart_tool/
 flutter_app/.flutter-plugins
 flutter_app/.flutter-plugins-dependencies

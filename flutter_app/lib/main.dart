@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flow_desk/core/router/app_router.dart';
 import 'package:flow_desk/core/theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Lock to portrait orientation
+  await dotenv.load(fileName: '.env');
+
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Set system UI overlay style for a seamless dark look
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -24,7 +25,6 @@ void main() {
   );
 
   runApp(
-    // ProviderScope at the root — all Riverpod providers available app-wide
     const ProviderScope(child: FlowDeskApp()),
   );
 }
@@ -40,7 +40,6 @@ class FlowDeskApp extends ConsumerWidget {
       title: 'FlowDesk',
       debugShowCheckedModeBanner: false,
       theme: FlowDeskTheme.darkTheme,
-      // Use Material 3 — set in ThemeData.useMaterial3 = true
       routerConfig: router,
     );
   }

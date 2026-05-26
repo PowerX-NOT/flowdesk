@@ -14,13 +14,14 @@
 | Add/Edit Task | Title, description, priority, date picker, status |
 | Task Detail | View, quick status update, edit, delete |
 
-### Release build
+### Setup & release build
 
 ```bash
 cd flutter_app
+cp .env.example .env
+# Edit .env — set API_BASE_URL=https://YOUR_RAILWAY_URL/api/v1
 flutter pub get
-flutter build apk --release \
-  --dart-define=API_BASE_URL=https://YOUR_RAILWAY_URL/api/v1
+flutter build apk --release
 ```
 
 ---
@@ -51,7 +52,3 @@ Environment variable reference: `backend/.env.example` (Railway Variables tab on
 - Tokens in `flutter_secure_storage` (Keychain / Keystore)
 
 ---
-
-## 📝 Git
-
-Atomic conventional commits. After clone: `sh scripts/setup-git-hooks.sh`
