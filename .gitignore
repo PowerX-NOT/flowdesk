@@ -43,6 +43,8 @@ flutter_app/**/*.freezed.dart
 .DS_Store
 
 # Secrets
+backend/.env
+backend/.env copy.example
 *.pem
 *.key
 

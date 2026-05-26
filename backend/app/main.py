@@ -119,16 +119,13 @@ app.include_router(users.router, prefix=PREFIX)
 
 @app.get("/health", tags=["Health"])
 def health_check() -> dict:
-    """Health check for Railway and load balancers — includes DB connectivity."""
+    """
+    Liveness probe for Railway — always HTTP 200 when the API process is up.
+    DB status is informational; a down DB must not fail the deploy healthcheck.
+    """
     db_ok = check_database_connection()
-    payload = {
+    return {
         "status": "ok" if db_ok else "degraded",
         "database": "connected" if db_ok else "unavailable",
         "environment": settings.APP_ENV,
     }
-    if not db_ok:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content=payload,
-        )
-    return payload

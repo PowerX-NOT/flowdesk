@@ -1,3 +1,6 @@
+import os
+from urllib.parse import quote_plus
+
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,12 +16,28 @@ def normalize_database_url(url: str) -> str:
     return url
 
 
+def database_url_from_railway_mysql() -> str | None:
+    """Build DATABASE_URL from Railway MySQL plugin variables when not set directly."""
+    host = os.environ.get("MYSQLHOST") or os.environ.get("MYSQL_HOST")
+    port = os.environ.get("MYSQLPORT") or os.environ.get("MYSQL_PORT") or "3306"
+    user = os.environ.get("MYSQLUSER") or os.environ.get("MYSQL_USER")
+    password = os.environ.get("MYSQLPASSWORD") or os.environ.get("MYSQL_PASSWORD")
+    database = os.environ.get("MYSQLDATABASE") or os.environ.get("MYSQL_DATABASE")
+    if not all([host, user, password, database]):
+        return None
+    safe_user = quote_plus(user)
+    safe_password = quote_plus(password)
+    return (
+        f"mysql+pymysql://{safe_user}:{safe_password}@{host}:{port}/{database}"
+    )
+
+
 class Settings(BaseSettings):
-    """Production settings — all values must come from the host environment (e.g. Railway)."""
+    """Production settings — from Railway service variables."""
 
     model_config = SettingsConfigDict(extra="ignore")
 
-    DATABASE_URL: str
+    DATABASE_URL: str = ""
     DATABASE_SSL: bool = False
     DB_POOL_SIZE: int = 5
     DB_MAX_OVERFLOW: int = 10
@@ -51,6 +70,8 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def validate_database_url(cls, v: str) -> str:
+        if not v.strip():
+            return v
         normalized = normalize_database_url(v.strip())
         if not normalized.startswith("mysql+pymysql://"):
             raise ValueError(
@@ -62,8 +83,21 @@ class Settings(BaseSettings):
     @classmethod
     def validate_app_env(cls, v: str) -> str:
         if v.lower() != "production":
-            raise ValueError("APP_ENV must be 'production'. Local deployment is not supported.")
+            raise ValueError("APP_ENV must be 'production'.")
         return "production"
+
+    @model_validator(mode="after")
+    def resolve_database_url(self) -> "Settings":
+        if not self.DATABASE_URL.strip():
+            built = database_url_from_railway_mysql()
+            if built:
+                object.__setattr__(self, "DATABASE_URL", normalize_database_url(built))
+        if not self.DATABASE_URL.strip():
+            raise ValueError(
+                "DATABASE_URL is required, or link a Railway MySQL service "
+                "(MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE)."
+            )
+        return self
 
     @model_validator(mode="after")
     def validate_secrets(self) -> "Settings":
@@ -83,8 +117,10 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
 
     def get_trusted_hosts(self) -> list[str]:
-        hosts = [h.strip() for h in self.TRUSTED_HOSTS.split(",") if h.strip()]
-        return hosts if hosts else ["*"]
+        raw = self.TRUSTED_HOSTS.strip()
+        if not raw or raw == "*":
+            return ["*"]
+        return [h.strip() for h in raw.split(",") if h.strip()]
 
 
 def get_settings() -> Settings:

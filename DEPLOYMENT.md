@@ -42,13 +42,13 @@ For **PlanetScale**, use the console connection string, set `DATABASE_SSL=true`,
 
 | Variable | Example / notes |
 |----------|-----------------|
-| `DATABASE_URL` | `mysql+pymysql://...` (from step 1) |
+| `DATABASE_URL` | `mysql+pymysql://...` or link MySQL (auto-built from `MYSQLHOST`, etc.) |
 | `DATABASE_SSL` | `false` (Railway MySQL) or `true` (PlanetScale) |
-| `JWT_SECRET_KEY` | `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `JWT_SECRET_KEY` | `python -c "import secrets; print(secrets.token_hex(32))"` (≥32 chars) |
 | `APP_ENV` | `production` |
-| `ALLOWED_ORIGINS` | `https://your-admin.example.com` (optional; mobile apps omit Origin) |
+| `ALLOWED_ORIGINS` | optional for mobile-only |
 | `TRUST_PROXY_HEADERS` | `true` |
-| `TRUSTED_HOSTS` | `*.up.railway.app,your-app.up.railway.app` |
+| `TRUSTED_HOSTS` | `*` (required for Railway healthchecks) |
 | `LOG_LEVEL` | `INFO` |
 | `PORT` | Railway sets automatically |
 
