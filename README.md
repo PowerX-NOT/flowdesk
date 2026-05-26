@@ -24,13 +24,14 @@ lib/
 └── presentation/   # Screens, widgets, Riverpod providers
 ```
 
-### Setup
+### Setup (production / real devices)
 ```bash
 cd flutter_app
 flutter pub get
-# Update lib/core/constants/app_constants.dart → baseUrl for your machine
-flutter run
+flutter run --dart-define=API_BASE_URL=https://YOUR_RAILWAY_URL/api/v1
 ```
+
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for Railway, MySQL, and release APK commands.
 
 ---
 
@@ -63,9 +64,12 @@ cp .env.example .env
 # Edit .env — set DATABASE_URL and generate JWT_SECRET_KEY:
 python -c "import secrets; print(secrets.token_hex(32))"
 
-# 4. Run server
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+# 4. Run migrations and server
+alembic upgrade head
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+Production deploy: Railway — see **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
 ---
 
