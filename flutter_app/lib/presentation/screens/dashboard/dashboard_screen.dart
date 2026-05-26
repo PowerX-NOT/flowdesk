@@ -119,6 +119,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(width: 8),
                   IconButton(
+                    onPressed: () => context.push(AppRoutes.profile),
+                    icon: const Icon(Icons.person_rounded),
+                    tooltip: 'Profile',
+                    style: IconButton.styleFrom(
+                      backgroundColor: FlowDeskColors.surfaceVariantDark,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
                     onPressed: _handleLogout,
                     icon: const Icon(Icons.logout_rounded),
                     tooltip: 'Logout',

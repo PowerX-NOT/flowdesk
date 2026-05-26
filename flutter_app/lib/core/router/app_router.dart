@@ -6,6 +6,7 @@ import 'package:flow_desk/presentation/providers/app_providers.dart';
 import 'package:flow_desk/presentation/screens/auth/login_screen.dart';
 import 'package:flow_desk/presentation/screens/auth/register_screen.dart';
 import 'package:flow_desk/presentation/screens/dashboard/dashboard_screen.dart';
+import 'package:flow_desk/presentation/screens/profile/profile_screen.dart';
 import 'package:flow_desk/presentation/screens/task/add_edit_task_screen.dart';
 import 'package:flow_desk/presentation/screens/task/task_detail_screen.dart';
 
@@ -82,6 +83,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.dashboard,
         builder: (_, __) => const DashboardScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.profile,
+        builder: (_, __) => const ProfileScreen(),
       ),
       GoRoute(
         path: AppRoutes.addTask,
