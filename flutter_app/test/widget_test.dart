@@ -1,30 +1,58 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flow_desk/domain/entities/user_entity.dart';
+import 'package:flow_desk/domain/repositories/auth_repository.dart';
+import 'package:flow_desk/presentation/providers/app_providers.dart';
 import 'package:flow_desk/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('FlowDesk app builds (unauthenticated smoke test)', (WidgetTester tester) async {
+    final fakeAuthRepo = _FakeAuthRepository();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          // Force router/initial auth checks to behave deterministically.
+          authRepositoryProvider.overrideWithValue(fakeAuthRepo),
+        ],
+        child: const FlowDeskApp(),
+      ),
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // On unauthenticated start we should end up on the auth/login flow.
+    expect(find.text('Welcome back'), findsOneWidget);
   });
+}
+
+class _FakeAuthRepository implements AuthRepository {
+  @override
+  Future<String> login({required String email, required String password}) async =>
+      Future.value('fake-access-token');
+
+  @override
+  Future<UserEntity> register({
+    required String name,
+    required String email,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<UserEntity> getCurrentUser() async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<bool> isAuthenticated() async => false;
+
+  @override
+  Future<bool> refreshSessionIfNeeded() async => false;
 }

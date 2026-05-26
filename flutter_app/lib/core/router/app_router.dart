@@ -10,13 +10,29 @@ import 'package:flow_desk/presentation/screens/task/add_edit_task_screen.dart';
 import 'package:flow_desk/presentation/screens/task/task_detail_screen.dart';
 
 /// Splash/redirect screen that checks auth state on launch
-class SplashScreen extends ConsumerWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Trigger auth check — router redirect will navigate accordingly
-    ref.read(authProvider.notifier).loadCurrentUser();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends ConsumerState<SplashScreen> {
+  bool _started = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Kick off auth check once; avoid re-triggering on rebuilds.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (_started) return;
+      _started = true;
+      await ref.read(authProvider.notifier).loadCurrentUser();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
         child: CircularProgressIndicator(),
@@ -28,22 +44,25 @@ class SplashScreen extends ConsumerWidget {
 /// App router with auth-gated navigation.
 /// Unauthenticated users are redirected to /login from any protected route.
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authNotifier = ref.watch(authProvider.notifier);
-
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
     redirect: (context, state) async {
       final isAuth = await ref.read(isAuthenticatedUseCaseProvider).call();
-      final isOnAuth = state.matchedLocation == AppRoutes.login ||
-          state.matchedLocation == AppRoutes.register ||
-          state.matchedLocation == AppRoutes.splash;
+      final isOnLogin = state.matchedLocation == AppRoutes.login;
+      final isOnRegister = state.matchedLocation == AppRoutes.register;
+      final isOnSplash = state.matchedLocation == AppRoutes.splash;
 
-      // Not authenticated → redirect to login
-      if (!isAuth && !isOnAuth) return AppRoutes.login;
+      // Unauthenticated users should never stay on the splash loader.
+      if (!isAuth) {
+        if (isOnLogin || isOnRegister) return null;
+        return AppRoutes.login;
+      }
 
-      // Already authenticated → skip auth screens
-      if (isAuth && isOnAuth) return AppRoutes.dashboard;
+      // Authenticated users should skip login/register/splash.
+      if (isAuth && (isOnLogin || isOnRegister || isOnSplash)) {
+        return AppRoutes.dashboard;
+      }
 
       return null; // No redirect needed
     },
