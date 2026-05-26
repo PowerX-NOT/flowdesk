@@ -20,7 +20,7 @@ engine = create_engine(
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
     pool_timeout=settings.DB_POOL_TIMEOUT,
-    echo=settings.is_development,
+    echo=False,
     connect_args=_build_connect_args(),
 )
 

@@ -15,7 +15,7 @@ Deploy the **FastAPI backend** to [Railway](https://railway.app), **MySQL** on R
 
 - API base path: `https://<your-domain>/api/v1`
 - Health check: `GET https://<your-domain>/health`
-- No `localhost` in production builds
+- HTTPS only — no local or emulator API URLs
 
 ---
 
@@ -62,11 +62,11 @@ curl -s https://YOUR_RAILWAY_URL/health
 # {"status":"ok","database":"connected","environment":"production"}
 ```
 
-### Seed admin (one-time, Railway shell or local with prod DATABASE_URL)
+### Seed admin (one-time, Railway service shell)
+
+Open the API service → **Shell**, then:
 
 ```bash
-cd backend
-pip install -r requirements.txt
 python scripts/init_db.py --seed-admin \
   --email admin@yourcompany.com \
   --password 'YourSecurePass1' \
@@ -115,7 +115,7 @@ dart run flutter_native_splash:create
 
 ## 4. Environment variables reference
 
-See `backend/.env.example` for the full list.
+See `backend/.env.example` for the full list (set in Railway Variables — not a local `.env` file).
 
 ---
 

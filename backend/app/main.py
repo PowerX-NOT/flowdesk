@@ -29,15 +29,8 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application startup — schema managed by Alembic in production."""
-    if settings.is_development:
-        from app.db.database import Base, engine
-        from app.models import task, user  # noqa: F401
-
-        logger.info("Development mode: ensuring tables exist via metadata.create_all")
-        Base.metadata.create_all(bind=engine)
-    else:
-        logger.info("Production mode: schema managed by Alembic migrations")
+    """Startup — schema is applied by Alembic before Gunicorn serves traffic."""
+    logger.info("Schema managed by Alembic migrations (see start.sh)")
 
     if not check_database_connection():
         logger.error("Database connection check failed on startup")
@@ -51,16 +44,15 @@ app = FastAPI(
     title="FlowDesk API",
     version="1.0.0",
     description="Production REST API for employee task management",
-    docs_url="/docs" if settings.is_development else None,
-    redoc_url="/redoc" if settings.is_development else None,
-    openapi_url="/openapi.json" if settings.is_development else None,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
     lifespan=lifespan,
 )
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Trust X-Forwarded-* from Railway / reverse proxy (HTTPS termination)
 if settings.TRUST_PROXY_HEADERS:
     app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
@@ -69,12 +61,10 @@ app.add_middleware(
     allowed_hosts=settings.get_trusted_hosts(),
 )
 
-# Request logging (production observability)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(SlowAPIMiddleware)
 
-# CORS — strict allow-list; empty list = no browser origins (mobile apps unaffected)
 _origins = settings.get_allowed_origins()
 if _origins:
     app.add_middleware(
@@ -99,10 +89,7 @@ async def add_security_headers(request: Request, call_next):
     )
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Cache-Control"] = "no-store"
-    if settings.is_production:
-        response.headers["Strict-Transport-Security"] = (
-            "max-age=31536000; includeSubDomains"
-        )
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 

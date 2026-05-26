@@ -10,9 +10,6 @@ build/
 .venv/
 venv/
 env/
-*.env
-.env.local
-
 # FastAPI / Uvicorn
 *.log
 
@@ -45,9 +42,5 @@ flutter_app/**/*.freezed.dart
 .DS_Store
 
 # Secrets
-jwt_secret.txt
 *.pem
 *.key
-
-# git
-.githooks/
