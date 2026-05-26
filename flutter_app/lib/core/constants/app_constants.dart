@@ -1,12 +1,15 @@
+import 'package:flow_desk/core/config/app_config.dart';
+
 /// API and App configuration constants for FlowDesk
 class AppConstants {
   AppConstants._();
 
-  // Base URL — change to your server address for production
-  static const String baseUrl = 'http://10.0.2.2:8000/api/v1';
+  /// Online API base URL (Railway / production)
+  static String get baseUrl => AppConfig.apiBaseUrl;
 
   // Token storage keys (flutter_secure_storage)
   static const String accessTokenKey = 'flowdesk_access_token';
+  static const String refreshTokenKey = 'flowdesk_refresh_token';
 
   // Pagination
   static const int defaultPageLimit = 50;
