@@ -1,13 +1,33 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { UserResponse } from '../lib/types';
 import { adminDeleteUser, adminListUsers, ApiError } from '../lib/api';
+import { IconRefresh, IconSearch, IconTrash } from '../components/Icons';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   const params = useMemo(() => ({ limit: 200, skip: 0 }), []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.role.toLowerCase().includes(q),
+    );
+  }, [users, search]);
+
+  const stats = useMemo(() => {
+    const active = users.filter((u) => u.is_active).length;
+    const admins = users.filter((u) => u.role === 'admin').length;
+    const employees = users.filter((u) => u.role === 'employee').length;
+    return { total: users.length, active, admins, employees };
+  }, [users]);
 
   async function load() {
     setLoading(true);
@@ -52,56 +72,129 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="card">
-      <div className="cardHeader">
-        <div>
-          <div className="cardTitle">Users</div>
-          <div className="cardSubtitle">All employee accounts (admin only)</div>
+    <div className="pageStack">
+      <div className="statsRow">
+        <div className="statCard accent">
+          <div className="statCardLabel">Total users</div>
+          <div className="statCardValue">{stats.total}</div>
+          <div className="statCardHint">Registered accounts</div>
         </div>
-        <div className="cardSubtitle">{users.length ? `${users.length} total` : null}</div>
+        <div className="statCard success">
+          <div className="statCardLabel">Active</div>
+          <div className="statCardValue">{stats.active}</div>
+          <div className="statCardHint">Can sign in</div>
+        </div>
+        <div className="statCard">
+          <div className="statCardLabel">Employees</div>
+          <div className="statCardValue">{stats.employees}</div>
+          <div className="statCardHint">Standard role</div>
+        </div>
+        <div className="statCard warning">
+          <div className="statCardLabel">Admins</div>
+          <div className="statCardValue">{stats.admins}</div>
+          <div className="statCardHint">Elevated access</div>
+        </div>
       </div>
 
-      {error ? <div className="errorBanner">{error}</div> : null}
-      {loading ? <div style={{ color: '#C3C7D4' }}>Loading...</div> : null}
+      <div className="panel">
+        <div className="panelHeader">
+          <div>
+            <div className="panelTitle">All users</div>
+            <div className="panelSubtitle">
+              {filtered.length === users.length
+                ? `${users.length} accounts`
+                : `${filtered.length} of ${users.length} shown`}
+            </div>
+          </div>
+          <div className="panelToolbar">
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => void load()}
+              disabled={loading}
+            >
+              <IconRefresh />
+              Refresh
+            </button>
+          </div>
+        </div>
 
-      <div className="tableWrap">
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: 90 }}>ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th style={{ width: 120 }}>Role</th>
-              <th style={{ width: 120 }}>Active</th>
-              <th style={{ width: 120 }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td>{u.id}</td>
-                <td>{u.name}</td>
-                <td>{u.email}</td>
-                <td>{u.role}</td>
-                <td>{u.is_active ? 'Active' : 'Disabled'}</td>
-                <td>
-                  <button className="btn danger" type="button" onClick={() => void handleDelete(u.id)}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {users.length === 0 && !loading ? (
-              <tr>
-                <td colSpan={6} style={{ color: '#C3C7D4', padding: 18 }}>
-                  No users found.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
+        {error ? (
+          <div style={{ padding: '16px 24px 0' }}>
+            <div className="errorBanner">{error}</div>
+          </div>
+        ) : null}
+
+        <div className="panelFilters">
+          <div className="field grow">
+            <div className="label">Search users</div>
+            <div className="inputWrap">
+              <IconSearch />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Name, email, or role…"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="panelBody">
+          {loading ? (
+            <div className="loadingBlock">
+              <div className="spinner" />
+              Loading users…
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="emptyState">
+              <div className="emptyStateTitle">No users found</div>
+              <p>Try adjusting your search or refresh the list.</p>
+            </div>
+          ) : (
+            <div className="tableWrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{ width: 72 }}>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th style={{ width: 120 }}>Role</th>
+                    <th style={{ width: 110 }}>Status</th>
+                    <th style={{ width: 100 }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((u) => (
+                    <tr key={u.id}>
+                      <td className="tdMuted">#{u.id}</td>
+                      <td className="tdName">{u.name}</td>
+                      <td className="tdEmail">{u.email}</td>
+                      <td>
+                        <span className={`badge badgeRole ${u.role}`}>{u.role}</span>
+                      </td>
+                      <td>
+                        <span className={u.is_active ? 'badge badgeActive' : 'badge badgeInactive'}>
+                          {u.is_active ? 'Active' : 'Disabled'}
+                        </span>
+                      </td>
+                      <td className="tdActions">
+                        <button
+                          className="btn danger iconOnly"
+                          type="button"
+                          title="Delete user"
+                          onClick={() => void handleDelete(u.id)}
+                        >
+                          <IconTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
-

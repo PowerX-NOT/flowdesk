@@ -42,8 +42,9 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
-        Loading...
+      <div className="appLoader">
+        <div className="spinner lg" />
+        <div className="appLoaderText">Loading FlowDesk Admin…</div>
       </div>
     );
   }
@@ -63,6 +64,7 @@ export default function App() {
       page={page}
       onPageChange={setPage}
       userName={user.name}
+      userEmail={user.email}
       onLogout={handleLogout}
     >
       {page === 'users' ? <UsersPage /> : null}
