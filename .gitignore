@@ -44,3 +44,7 @@ flutter_app/**/*.freezed.dart
 # Secrets
 *.pem
 *.key
+
+# Local git hooks
+.githooks/
+scripts/setup-git-hooks.sh
