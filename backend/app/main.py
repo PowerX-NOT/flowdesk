@@ -4,62 +4,89 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
+from starlette.middleware.gzip import GZipMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.api import auth, tasks, users
 from app.core.config import settings
-from app.db.database import Base, engine
-from app.models import task, user  # noqa: F401 — import models for table creation
+from app.db.database import check_database_connection
+from app.middleware.logging_middleware import RequestLoggingMiddleware
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
 
-# Rate limiter — apply to all routes
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create database tables on startup."""
-    logger.info("Creating database tables if not exist...")
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database ready.")
+    """Application startup — schema managed by Alembic in production."""
+    if settings.is_development:
+        from app.db.database import Base, engine
+        from app.models import task, user  # noqa: F401
+
+        logger.info("Development mode: ensuring tables exist via metadata.create_all")
+        Base.metadata.create_all(bind=engine)
+    else:
+        logger.info("Production mode: schema managed by Alembic migrations")
+
+    if not check_database_connection():
+        logger.error("Database connection check failed on startup")
+    else:
+        logger.info("Database connection verified")
     yield
-    logger.info("Application shutting down.")
+    logger.info("Application shutting down")
 
 
 app = FastAPI(
-    title="Employee Task Management API",
+    title="FlowDesk API",
     version="1.0.0",
-    description="Secure REST API for employee task management",
-    docs_url="/docs" if settings.APP_ENV == "development" else None,
-    redoc_url="/redoc" if settings.APP_ENV == "development" else None,
+    description="Production REST API for employee task management",
+    docs_url="/docs" if settings.is_development else None,
+    redoc_url="/redoc" if settings.is_development else None,
+    openapi_url="/openapi.json" if settings.is_development else None,
     lifespan=lifespan,
 )
 
-# Rate limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIMiddleware)
 
-# CORS — strict allow-list, NO wildcard (*)
+# Trust X-Forwarded-* from Railway / reverse proxy (HTTPS termination)
+if settings.TRUST_PROXY_HEADERS:
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.get_allowed_origins(),
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],  # Allow-list, TRACE/PATCH excluded
-    allow_headers=["Authorization", "Content-Type"],
+    TrustedHostMiddleware,
+    allowed_hosts=settings.get_trusted_hosts(),
 )
 
+# Request logging (production observability)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=500)
+app.add_middleware(SlowAPIMiddleware)
 
-# Security headers middleware
+# CORS — strict allow-list; empty list = no browser origins (mobile apps unaffected)
+_origins = settings.get_allowed_origins()
+if _origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+        max_age=600,
+    )
+
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -72,20 +99,22 @@ async def add_security_headers(request: Request, call_next):
     )
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Cache-Control"] = "no-store"
+    if settings.is_production:
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
     return response
 
 
-# Validation error handler — generic messages to client, no internal details
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logger.warning("Validation error on %s: %s", request.url.path, str(exc))
+    logger.warning("Validation error on %s", request.url.path)
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"detail": "Invalid request data. Please check your input."},
     )
 
 
-# Generic error handler — do NOT expose internal errors to client
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     logger.exception("Unhandled error on %s", request.url.path)
@@ -95,7 +124,6 @@ async def generic_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Include routers with versioned prefix
 PREFIX = "/api/v1"
 app.include_router(auth.router, prefix=PREFIX)
 app.include_router(tasks.router, prefix=PREFIX)
@@ -104,5 +132,16 @@ app.include_router(users.router, prefix=PREFIX)
 
 @app.get("/health", tags=["Health"])
 def health_check() -> dict:
-    """Health check endpoint — no sensitive data returned."""
-    return {"status": "ok"}
+    """Health check for Railway and load balancers — includes DB connectivity."""
+    db_ok = check_database_connection()
+    payload = {
+        "status": "ok" if db_ok else "degraded",
+        "database": "connected" if db_ok else "unavailable",
+        "environment": settings.APP_ENV,
+    }
+    if not db_ok:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=payload,
+        )
+    return payload
