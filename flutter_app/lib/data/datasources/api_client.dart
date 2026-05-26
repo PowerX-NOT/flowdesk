@@ -170,7 +170,9 @@ class _ErrorInterceptor extends Interceptor {
         return const ServerFailure('Too many requests. Please slow down.');
       default:
         if (statusCode != null && statusCode >= 500) {
-          return const ServerFailure('Server error. Please try again later.');
+          final message =
+              detail ?? 'Server error (HTTP $statusCode). Please try again later.';
+          return ServerFailure(message, statusCode: statusCode);
         }
         return ServerFailure(
           detail ?? 'An error occurred.',

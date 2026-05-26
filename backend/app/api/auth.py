@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.api.deps import get_db
 from app.core.security import (
@@ -49,8 +50,24 @@ def register(
         hashed_password=hash_password(payload.password),
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    try:
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        # Protect against race conditions / duplicate inserts.
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists.",
+        )
+    except SQLAlchemyError:
+        # Generic DB failure (schema mismatch, connection issue, etc).
+        db.rollback()
+        logger.exception("Database error during registration")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server failed to create the account. Please try again later.",
+        )
 
     logger.info("New user registered: id=%d", user.id)
     return user

@@ -2,6 +2,10 @@
 abstract class Failure {
   final String message;
   const Failure(this.message);
+
+  // Ensure displaying a Failure never prints Dart's default "Instance of ..."
+  @override
+  String toString() => message;
 }
 
 class NetworkFailure extends Failure {

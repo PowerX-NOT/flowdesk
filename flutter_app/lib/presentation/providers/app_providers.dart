@@ -9,6 +9,7 @@ import 'package:flow_desk/domain/entities/task_entity.dart';
 import 'package:flow_desk/domain/entities/user_entity.dart';
 import 'package:flow_desk/domain/repositories/auth_repository.dart';
 import 'package:flow_desk/domain/repositories/task_repository.dart';
+import 'package:flow_desk/core/errors/failures.dart';
 import 'package:flow_desk/domain/usecases/auth/auth_usecases.dart';
 import 'package:flow_desk/domain/usecases/task/task_usecases.dart';
 
@@ -118,7 +119,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState(user: user);
       return true;
     } catch (e) {
-      state = AuthState(errorMessage: e.toString());
+      state = AuthState(errorMessage: _toMessage(e));
       return false;
     }
   }
@@ -138,7 +139,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Auto-login after registration
       return await login(email: email, password: password);
     } catch (e) {
-      state = AuthState(errorMessage: e.toString());
+      state = AuthState(errorMessage: _toMessage(e));
       return false;
     }
   }
@@ -174,6 +175,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = const AuthState();
     }
   }
+}
+
+String _toMessage(Object e) {
+  if (e is Failure) return e.message;
+  return e.toString();
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
@@ -229,7 +235,7 @@ class TaskNotifier extends StateNotifier<TaskState> {
       );
       state = state.copyWith(tasks: tasks, isLoading: false);
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      state = state.copyWith(isLoading: false, errorMessage: _toMessage(e));
     }
   }
 
@@ -256,7 +262,7 @@ class TaskNotifier extends StateNotifier<TaskState> {
       await loadTasks();
       return true;
     } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
+      state = state.copyWith(errorMessage: _toMessage(e));
       return false;
     }
   }
@@ -277,7 +283,7 @@ class TaskNotifier extends StateNotifier<TaskState> {
       await loadTasks();
       return true;
     } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
+      state = state.copyWith(errorMessage: _toMessage(e));
       return false;
     }
   }
@@ -288,7 +294,7 @@ class TaskNotifier extends StateNotifier<TaskState> {
       await loadTasks();
       return true;
     } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
+      state = state.copyWith(errorMessage: _toMessage(e));
       return false;
     }
   }
