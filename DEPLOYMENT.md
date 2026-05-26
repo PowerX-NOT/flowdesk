@@ -22,15 +22,9 @@ Deploy the **FastAPI backend** to [Railway](https://railway.app), **MySQL** on R
 ## 1. Railway — MySQL database
 
 1. Create a Railway project → **New** → **Database** → **MySQL**.
-2. Open the MySQL service → **Variables** and note:
-   - `MYSQLHOST`, `MYSQLPORT`, `MYSQLUSER`, `MYSQLPASSWORD`, `MYSQLDATABASE`
-3. Build `DATABASE_URL` for the API service:
-
-```text
-mysql+pymysql://MYSQLUSER:MYSQLPASSWORD@MYSQLHOST:MYSQLPORT/MYSQLDATABASE
-```
-
-For **PlanetScale**, use the console connection string, set `DATABASE_SSL=true`, and ensure the URL uses `mysql+pymysql://`.
+2. MySQL service → **Variables** — Railway provides (among others):
+   - `MYSQL_URL`, `MYSQLHOST`, `MYSQLPORT`, `MYSQLUSER`, `MYSQLPASSWORD`, `MYSQLDATABASE`
+3. Do **not** copy these into the API service manually — reference them from the API (step 2).
 
 ---
 
@@ -38,24 +32,39 @@ For **PlanetScale**, use the console connection string, set `DATABASE_SSL=true`,
 
 1. **New** → **GitHub Repo** → select this repository.
 2. Set **Root Directory** to `backend`.
-3. **Link** the MySQL service to the API service (Railway → API service → Variables → **Add Reference**).
+3. Open the **API** service → **Variables** → **RAW Editor**.
+4. Paste the block below. For `DATABASE_URL`, use the **Reference** picker: **MySQL** → `MYSQL_URL` (shows as `${{MySQL.MYSQL_URL}}`).
+5. Replace `your-secret-at-least-32-characters-long` with your JWT secret:
 
-4. Add **Variables** (do **not** leave `DATABASE_URL` as `USER:PASSWORD@HOST:PORT`):
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 
-| Variable | Value |
-|----------|--------|
-| `JWT_SECRET_KEY` | `python -c "import secrets; print(secrets.token_hex(32))"` (≥32 chars) |
-| `APP_ENV` | `production` |
-| `TRUSTED_HOSTS` | `*` |
-| `TRUST_PROXY_HEADERS` | `true` |
-| `DATABASE_SSL` | `false` |
+### API service variables (copy-paste)
 
-Optional: `DATABASE_URL` = `${{MySQL.DATABASE_URL}}` via Reference picker only — or omit it and let the app build the URL from `MYSQLHOST`, `MYSQLUSER`, etc.
+```env
+DATABASE_URL=${{MySQL.MYSQL_URL}}
+JWT_SECRET_KEY=your-secret-at-least-32-characters-long
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+DATABASE_SSL=false
+DB_POOL_SIZE=5
+DB_MAX_OVERFLOW=10
+DB_POOL_TIMEOUT=30
+DB_POOL_RECYCLE=1800
+APP_ENV=production
+LOG_LEVEL=INFO
+TRUST_PROXY_HEADERS=true
+TRUSTED_HOSTS=*
+```
 
-Remove duplicate manual `MYSQL_*` copies if you use Reference linking (Railway injects `MYSQLHOST` automatically).
+Quotes are optional in Railway; unquoted values work the same.
 
-5. Deploy uses `backend/Dockerfile` or `railway.toml` → runs `alembic upgrade head` then Gunicorn.
-6. Copy the public URL, e.g. `https://flowdesk-api-production.up.railway.app`.
+**Do not add** placeholder `USER:PASSWORD@HOST`, duplicate `MYSQLHOST` copies, or `MYSQL_PUBLIC_URL` on the API service.
+
+6. Deploy uses `backend/Dockerfile` → `alembic upgrade head` then Gunicorn.
+7. Copy the public URL, e.g. `https://flowdesk-api-production.up.railway.app`.
 
 ### Verify backend
 
@@ -112,7 +121,15 @@ dart run flutter_native_splash:create
 
 ## 4. Environment variables reference
 
-See `backend/.env.example` for the full list (set in Railway Variables — not a local `.env` file).
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | `${{MySQL.MYSQL_URL}}` — internal MySQL connection (auto `mysql+pymysql://`) |
+| `JWT_SECRET_KEY` | Signs access/refresh tokens (≥32 characters) |
+| `APP_ENV` | Must be `production` |
+| `TRUSTED_HOSTS` | `*` — allows Railway healthchecks |
+| `DATABASE_SSL` | `false` for Railway MySQL |
+
+Full copy-paste block: `backend/.env.example` (for Railway only — not a local `.env` file).
 
 ---
 

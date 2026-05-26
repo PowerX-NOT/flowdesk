@@ -38,9 +38,9 @@ flutter build apk --release
 | GET/PUT/DELETE | `/api/v1/tasks/{id}` | Yes | Task CRUD |
 | GET | `/health` | No | Health + DB status |
 
-Hosted on **Railway** (FastAPI + Gunicorn + MySQL). See **[DEPLOYMENT.md](DEPLOYMENT.md)** for setup.
+Hosted on **Railway** (FastAPI + Gunicorn + MySQL). See **[DEPLOYMENT.md](DEPLOYMENT.md)** for full setup.
 
-Environment variable reference: `backend/.env.example` (Railway Variables tab only — no local `.env`).
+**Railway API variables:** paste from `backend/.env.example` — use `${{MySQL.MYSQL_URL}}` for `DATABASE_URL` via the Reference picker.
 
 ---
 
