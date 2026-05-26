@@ -1,73 +1,123 @@
-# React + TypeScript + Vite
+# FlowDesk Admin
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Desktop-oriented admin console for **FlowDesk**. Built with **React**, **TypeScript**, and **Vite**.
 
-Currently, two official plugins are available:
+Only users with role **`admin`** can sign in. Employees registered via the mobile app cannot access this UI.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Login** — JWT auth against the FastAPI backend
+- **Users** — stats overview, search, list all accounts, delete users
+- **Tasks** — stats overview, search, status filters, update status, delete tasks
+- **UI** — dark theme, full-width layout, FlowDesk gradient app icon
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js 20.19+ (or 22.12+) recommended for Vite 8
+- Running FlowDesk API (local or Railway)
+- An **admin** account on the API
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Local development
+
+```bash
+cd admin-web
+cp .env.example .env
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Edit `.env`:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_API_BASE_URL=https://YOUR_RAILWAY_URL/api/v1
 ```
+
+```bash
+npm install
+npm run dev
+```
+
+Open the URL shown in the terminal (default `http://localhost:5173`).
+
+### Create an admin user
+
+On Railway (API service shell):
+
+```bash
+python scripts/init_db.py --seed-admin \
+  --email admin@yourcompany.com \
+  --password 'YourSecurePass1' \
+  --name 'Admin'
+```
+
+Or set `role = 'admin'` for an existing user in MySQL.
+
+---
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Dev server with HMR |
+| `npm run build` | Production build → `dist/` |
+| `npm run preview` | Preview production build locally |
+
+---
+
+## Project layout
+
+```
+admin-web/
+├── public/
+│   └── favicon.svg          # FlowDesk app icon
+├── src/
+│   ├── components/
+│   │   ├── AdminShell.tsx   # Sidebar + top bar
+│   │   ├── FlowDeskLogo.tsx # Brand mark (SVG)
+│   │   └── Icons.tsx        # Nav/action icons
+│   ├── pages/
+│   │   ├── LoginPage.tsx
+│   │   ├── UsersPage.tsx
+│   │   └── TasksPage.tsx
+│   ├── lib/
+│   │   ├── api.ts           # API client + auth
+│   │   ├── env.ts
+│   │   └── types.ts
+│   └── styles/
+│       └── admin.css
+├── vercel.json              # SPA rewrites
+└── DEPLOYMENT.md            # Vercel deploy guide
+```
+
+---
+
+## API endpoints used
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/auth/login` | Login |
+| GET | `/users/me` | Current user (must be `admin`) |
+| GET | `/users/` | List users |
+| DELETE | `/users/{id}` | Delete user |
+| GET | `/tasks/admin` | List all tasks (`?search=&status=`) |
+| PUT | `/tasks/admin/{id}` | Update task (e.g. status) |
+| DELETE | `/tasks/admin/{id}` | Delete task |
+
+Paths are relative to `VITE_API_BASE_URL` (already includes `/api/v1`).
+
+---
+
+## Deploy
+
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for Vercel setup, env vars, and CORS notes.
+
+---
+
+## Related docs
+
+- [Root README](../README.md)
+- [Production deployment (Railway + Flutter)](../DEPLOYMENT.md)

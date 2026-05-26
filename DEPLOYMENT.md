@@ -1,30 +1,30 @@
 # FlowDesk — Production Deployment Guide
 
-Deploy the **FastAPI backend** to [Railway](https://railway.app), **MySQL** on Railway (or PlanetScale), and ship the **Flutter app** as a release APK/App Bundle for real Android/iOS devices over HTTPS.
+Deploy the **FastAPI backend** to [Railway](https://railway.app), **MySQL** on Railway, the **Flutter app** as a release APK/App Bundle, and the **admin dashboard** to [Vercel](https://vercel.com).
 
 ---
 
 ## Architecture
 
 ```
-[Android / iOS app]  --HTTPS-->  [Railway: FastAPI + Gunicorn/Uvicorn]
-                                        |
-                                        v
-                               [Railway MySQL or PlanetScale]
+[Flutter app]  ──HTTPS──►  [Railway: FastAPI + Gunicorn]
+[Admin web]    ──HTTPS──►         │
+   (Vercel)                       ▼
+                          [Railway MySQL]
 ```
 
-- API base path: `https://<your-domain>/api/v1`
-- Health check: `GET https://<your-domain>/health`
-- HTTPS only — no local or emulator API URLs
+- API base path: `https://<your-railway-domain>/api/v1`
+- Health check: `GET https://<your-railway-domain>/health`
+- Admin UI: `https://<your-vercel-domain>` (static SPA)
+- HTTPS only in production — no emulator/local API URLs in release builds
 
 ---
 
 ## 1. Railway — MySQL database
 
 1. Create a Railway project → **New** → **Database** → **MySQL**.
-2. MySQL service → **Variables** — Railway provides (among others):
-   - `MYSQL_URL`, `MYSQLHOST`, `MYSQLPORT`, `MYSQLUSER`, `MYSQLPASSWORD`, `MYSQLDATABASE`
-3. Do **not** copy these into the API service manually — reference them from the API (step 2).
+2. MySQL service → **Variables** — Railway provides `MYSQL_URL`, `MYSQLHOST`, etc.
+3. Reference these from the API service (step 2); do not copy credentials manually.
 
 ---
 
@@ -32,9 +32,9 @@ Deploy the **FastAPI backend** to [Railway](https://railway.app), **MySQL** on R
 
 1. **New** → **GitHub Repo** → select this repository.
 2. Set **Root Directory** to `backend`.
-3. Open the **API** service → **Variables** → **RAW Editor**.
-4. Paste the block below. For `DATABASE_URL`, use the **Reference** picker: **MySQL** → `MYSQL_URL` (shows as `${{MySQL.MYSQL_URL}}`).
-5. Replace `your-secret-at-least-32-characters-long` with your JWT secret:
+3. API service → **Variables** → **RAW Editor**.
+4. Paste from `backend/.env.example`. For `DATABASE_URL`, use **Reference**: **MySQL** → `MYSQL_URL` (`${{MySQL.MYSQL_URL}}`).
+5. Generate JWT secret:
 
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
@@ -59,12 +59,16 @@ TRUST_PROXY_HEADERS=true
 TRUSTED_HOSTS=*
 ```
 
-Quotes are optional in Railway; unquoted values work the same.
+**Optional — restrict CORS** (recommended when admin is on Vercel):
 
-**Do not add** placeholder `USER:PASSWORD@HOST`, duplicate `MYSQLHOST` copies, or `MYSQL_PUBLIC_URL` on the API service.
+```env
+ALLOWED_ORIGINS=https://your-admin.vercel.app,https://your-admin-custom-domain.com
+```
+
+If `ALLOWED_ORIGINS` is empty, the API falls back to `allow_origins=["*"]` with credentials disabled so browser clients (including the admin SPA) still work.
 
 6. Deploy uses `backend/Dockerfile` → `alembic upgrade head` then Gunicorn.
-7. Copy the public URL, e.g. `https://flowdesk-api-production.up.railway.app`.
+7. Note the public URL, e.g. `https://flowdesk-production-xxxx.up.railway.app`.
 
 ### Verify backend
 
@@ -75,8 +79,6 @@ curl -s https://YOUR_RAILWAY_URL/health
 
 ### Seed admin (one-time, Railway service shell)
 
-Open the API service → **Shell**, then:
-
 ```bash
 python scripts/init_db.py --seed-admin \
   --email admin@yourcompany.com \
@@ -86,69 +88,75 @@ python scripts/init_db.py --seed-admin \
 
 ---
 
-## 3. Flutter — production build
+## 3. Vercel — Admin web
 
-Set your Railway HTTPS URL in `.env` (include `/api/v1`):
+1. Import the repo on [Vercel](https://vercel.com).
+2. Set **Root Directory** to `admin-web`.
+3. **Environment variable** (Production + Preview):
+
+   | Name | Value |
+   |------|--------|
+   | `VITE_API_BASE_URL` | `https://YOUR_RAILWAY_URL/api/v1` |
+
+4. Build: `npm run build` · Output: `dist` (configured in `vercel.json`).
+5. After deploy, add the Vercel URL to Railway `ALLOWED_ORIGINS` if you use a strict CORS list.
+
+Details: **[admin-web/DEPLOYMENT.md](admin-web/DEPLOYMENT.md)**.
+
+---
+
+## 4. Flutter — production build
 
 ```bash
 cd flutter_app
 cp .env.example .env
-# Edit .env:
-#   API_BASE_URL=https://YOUR_RAILWAY_URL/api/v1
+# API_BASE_URL=https://YOUR_RAILWAY_URL/api/v1
 flutter pub get
-
 flutter build apk --release
 flutter build appbundle --release   # Play Store
-flutter build ios --release         # macOS + Xcode
 ```
 
-APK output: `flutter_app/build/app/outputs/flutter-apk/app-release.apk`
+APK: `flutter_app/build/app/outputs/flutter-apk/app-release.apk`
 
 ### Release signing (Android)
 
-Create `android/key.properties` and configure signing in `android/app/build.gradle.kts` before Play Store upload. Debug signing is fine for internal testing only.
-
-### App icon / splash
-
-```bash
-dart pub add dev:flutter_launcher_icons dev:flutter_native_splash
-# Configure pubspec, add assets/images/icon.png, then:
-dart run flutter_launcher_icons
-dart run flutter_native_splash:create
-```
+Configure `android/key.properties` and signing in `android/app/build.gradle.kts` before Play Store upload.
 
 ---
 
-## 4. Environment variables reference
+## 5. Environment variables reference
 
-| Variable | Purpose |
-|----------|---------|
-| `DATABASE_URL` | `${{MySQL.MYSQL_URL}}` — internal MySQL connection (auto `mysql+pymysql://`) |
-| `JWT_SECRET_KEY` | Signs access/refresh tokens (≥32 characters) |
-| `APP_ENV` | Must be `production` |
-| `TRUSTED_HOSTS` | `*` — allows Railway healthchecks |
-| `DATABASE_SSL` | `false` for Railway MySQL |
-
-Full copy-paste block: `backend/.env.example` (for Railway only — not a local `.env` file).
+| Variable | Service | Purpose |
+|----------|---------|---------|
+| `DATABASE_URL` | Railway API | `${{MySQL.MYSQL_URL}}` |
+| `JWT_SECRET_KEY` | Railway API | Signs tokens (≥32 chars) |
+| `APP_ENV` | Railway API | `production` |
+| `ALLOWED_ORIGINS` | Railway API | Comma-separated admin (and other) web origins |
+| `TRUSTED_HOSTS` | Railway API | `*` for Railway healthchecks |
+| `VITE_API_BASE_URL` | Vercel | Railway API URL including `/api/v1` |
+| `API_BASE_URL` | Flutter `.env` | Same API URL for mobile app |
 
 ---
 
-## 5. Production checklist
+## 6. Production checklist
 
 - [ ] `JWT_SECRET_KEY` set (≥32 chars), never committed
 - [ ] `APP_ENV=production` on Railway
 - [ ] `/health` returns `database: connected`
-- [ ] Alembic migrations applied (`alembic upgrade head` on deploy)
-- [ ] `flutter_app/.env` has `API_BASE_URL=https://...` (from `.env.example`)
-- [ ] Register/login on a **physical device** on cellular Wi‑Fi
-- [ ] Create, edit, delete tasks end-to-end
-- [ ] Token persists after app restart; expired JWT triggers re-login or refresh
+- [ ] Alembic migrations applied on deploy
+- [ ] Admin user seeded or promoted in DB
+- [ ] `VITE_API_BASE_URL` set on Vercel; admin login works
+- [ ] `flutter_app/.env` has production `API_BASE_URL`
+- [ ] Register/login on a **physical device**
+- [ ] Create, edit, delete tasks from Flutter
+- [ ] Admin web: list users/tasks, update task status, logout
 
 ---
 
-## 6. Security notes
+## 7. Security notes
 
-- HTTPS only for API URL in release builds
-- JWT access + refresh tokens; refresh stored in `flutter_secure_storage`
-- bcrypt passwords, strict CORS allow-list, HSTS in production
-- Rate limiting via slowapi (100 req/min default)
+- HTTPS only for API URLs in production
+- JWT access + refresh; Flutter uses `flutter_secure_storage`
+- bcrypt passwords, CORS, HSTS in production
+- Rate limiting via slowapi
+- Admin web stores tokens in `localStorage` — deploy only over HTTPS; restrict to trusted admins
