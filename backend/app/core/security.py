@@ -57,28 +57,37 @@ def create_refresh_token(subject: Any) -> str:
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
+def _decode_token(token: str, expected_type: str) -> dict:
+    """
+    Decode and validate a JWT.
+    Algorithm is HARDCODED — rejects 'none' and any unexpected algorithm.
+    """
+    payload = jwt.decode(
+        token,
+        settings.JWT_SECRET_KEY,
+        algorithms=[settings.JWT_ALGORITHM],
+        options={
+            "require_sub": True,
+            "verify_exp": True,
+            "verify_iat": True,
+        },
+    )
+    if payload.get("type") != expected_type:
+        raise JWTError("Invalid token type")
+    return payload
+
+
 def decode_access_token(token: str) -> dict:
-    """
-    Decode and validate a JWT access token.
-    - Algorithm is HARDCODED — rejects 'none' and any unexpected algorithm
-    - 'exp' claim is validated automatically by python-jose
-    Raises JWTError on any validation failure.
-    """
+    """Decode and validate a JWT access token."""
     try:
-        payload = jwt.decode(
-            token,
-            settings.JWT_SECRET_KEY,
-            # Hardcode expected algorithm — NEVER use algorithms from token header
-            algorithms=[settings.JWT_ALGORITHM],
-            options={
-                "require_sub": True,
-                "verify_exp": True,   # Always validate expiry
-                "verify_iat": True,
-            },
-        )
-        # Reject tokens that are not access tokens
-        if payload.get("type") != "access":
-            raise JWTError("Invalid token type")
-        return payload
+        return _decode_token(token, "access")
+    except JWTError:
+        raise
+
+
+def decode_refresh_token(token: str) -> dict:
+    """Decode and validate a JWT refresh token."""
+    try:
+        return _decode_token(token, "refresh")
     except JWTError:
         raise
