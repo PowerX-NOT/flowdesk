@@ -48,3 +48,6 @@ flutter_app/**/*.freezed.dart
 jwt_secret.txt
 *.pem
 *.key
+
+# git
+.githooks/

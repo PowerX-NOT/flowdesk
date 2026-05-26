@@ -123,7 +123,7 @@ class FlowDeskTheme {
       ),
 
       // Cards
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: FlowDeskColors.cardDark,
         elevation: 0,
         shape: RoundedRectangleBorder(
