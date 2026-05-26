@@ -5,19 +5,32 @@ import 'package:flow_desk/core/constants/app_routes.dart';
 import 'package:flow_desk/core/theme/app_theme.dart';
 import 'package:flow_desk/presentation/providers/app_providers.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _loadedOnce = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (_loadedOnce) return;
+      _loadedOnce = true;
+      await ref.read(authProvider.notifier).loadCurrentUser();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
 
     if (user == null) {
-      // Shouldn't happen due to router auth-gating, but fail safe.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) context.go(AppRoutes.login);
-      });
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
