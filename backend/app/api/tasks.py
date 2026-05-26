@@ -4,7 +4,7 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_admin, get_current_user, get_db
 from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
@@ -51,6 +51,31 @@ def list_tasks(
 
     if search:
         # ORM LIKE — parameterized, safe from SQL injection
+        search_term = f"%{search.strip()}%"
+        query = query.filter(Task.title.ilike(search_term))
+
+    return query.order_by(Task.created_at.desc()).offset(skip).limit(limit).all()
+
+
+@router.get("/admin", response_model=list[TaskResponse])
+def admin_list_tasks(
+    db: Annotated[Session, Depends(get_db)],
+    _admin: Annotated[User, Depends(get_current_admin)],
+    status_filter: Optional[TaskStatus] = Query(None, alias="status"),
+    search: Optional[str] = Query(None, max_length=200),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+) -> list[Task]:
+    """
+    List all tasks in the system — ADMIN ONLY.
+    Shares the same filtering semantics as the per-user list endpoint.
+    """
+    query = db.query(Task)
+
+    if status_filter:
+        query = query.filter(Task.status == status_filter)
+
+    if search:
         search_term = f"%{search.strip()}%"
         query = query.filter(Task.title.ilike(search_term))
 
@@ -105,6 +130,31 @@ def update_task(
     return task
 
 
+@router.put("/admin/{task_id}", response_model=TaskResponse)
+def admin_update_task(
+    task_id: int,
+    payload: TaskUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    _admin: Annotated[User, Depends(get_current_admin)],
+) -> Task:
+    """Update any task — ADMIN ONLY."""
+    task = db.get(Task, task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found.",
+        )
+
+    update_data = payload.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(task, field, value)
+
+    db.commit()
+    db.refresh(task)
+    logger.info("Task updated by admin: id=%d", task.id)
+    return task
+
+
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(
     task_id: int,
@@ -116,3 +166,21 @@ def delete_task(
     db.delete(task)
     db.commit()
     logger.info("Task deleted: id=%d by user_id=%d", task_id, current_user.id)
+
+
+@router.delete("/admin/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_delete_task(
+    task_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    _admin: Annotated[User, Depends(get_current_admin)],
+) -> None:
+    """Delete any task — ADMIN ONLY."""
+    task = db.get(Task, task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found.",
+        )
+    db.delete(task)
+    db.commit()
+    logger.info("Task deleted by admin: id=%d", task_id)
