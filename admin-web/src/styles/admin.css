@@ -55,13 +55,15 @@ body {
 }
 
 #root {
-  min-height: 100%;
+  width: 100%;
+  min-height: 100vh;
 }
 
 /* ─── Shell layout ─── */
 
 .adminShell {
   display: flex;
+  width: 100%;
   min-height: 100vh;
   background:
     radial-gradient(ellipse 80% 50% at 100% -20%, rgba(92, 107, 192, 0.12), transparent),
@@ -92,13 +94,27 @@ body {
   margin-bottom: 8px;
 }
 
-.adminBrandMark {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--primary) 0%, #7c4dff 100%);
-  box-shadow: 0 8px 24px var(--primary-glow);
+.flowDeskLogo {
+  display: block;
   flex-shrink: 0;
+  filter: drop-shadow(0 8px 20px rgba(92, 107, 192, 0.45));
+}
+
+.flowDeskLogo.loginHeroLogo {
+  margin-bottom: 32px;
+  filter: drop-shadow(0 12px 32px rgba(92, 107, 192, 0.5));
+}
+
+.uiIcon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.adminNavButton svg,
+.adminLogoutButton svg,
+.btn svg {
+  flex-shrink: 0;
+  display: block;
 }
 
 .adminBrandTitle {
@@ -250,6 +266,7 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  width: 100%;
 }
 
 .adminTopBar {
@@ -279,9 +296,9 @@ body {
 
 .adminMain {
   flex: 1;
-  padding: 28px 32px 48px;
+  width: 100%;
+  padding: 28px 40px 48px;
   overflow: auto;
-  max-width: 1440px;
 }
 
 /* ─── Page sections ─── */
@@ -600,14 +617,16 @@ select.compact {
 /* ─── Tables ─── */
 
 .tableWrap {
-  overflow: auto;
-  max-height: calc(100vh - 340px);
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 320px);
+  width: 100%;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 880px;
+  table-layout: auto;
 }
 
 th,
@@ -815,9 +834,10 @@ tbody tr:last-child td {
 /* ─── Login ─── */
 
 .loginPage {
+  width: 100%;
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 1fr 480px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(420px, 0.8fr);
 }
 
 @media (max-width: 960px) {
@@ -834,21 +854,12 @@ tbody tr:last-child td {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 64px 72px;
+  padding: 64px clamp(40px, 6vw, 120px);
   background:
     radial-gradient(ellipse 70% 60% at 20% 30%, rgba(92, 107, 192, 0.25), transparent),
     radial-gradient(ellipse 50% 50% at 80% 80%, rgba(38, 198, 218, 0.12), transparent),
     var(--bg-elevated);
   border-right: 1px solid var(--outline);
-}
-
-.loginHeroMark {
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, var(--primary), #7c4dff);
-  box-shadow: 0 12px 40px var(--primary-glow);
-  margin-bottom: 32px;
 }
 
 .loginHeroTitle {
@@ -897,8 +908,9 @@ tbody tr:last-child td {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 48px 40px;
+  padding: 48px clamp(32px, 5vw, 80px);
   background: var(--bg);
+  width: 100%;
 }
 
 .loginCard {
@@ -936,6 +948,7 @@ tbody tr:last-child td {
 /* ─── Full-page loader ─── */
 
 .appLoader {
+  width: 100%;
   min-height: 100vh;
   display: flex;
   flex-direction: column;

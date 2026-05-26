@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import FlowDeskLogo from '../components/FlowDeskLogo';
 import type { UserResponse } from '../lib/types';
 import { clearTokens, login } from '../lib/api';
 
@@ -30,7 +31,7 @@ export default function LoginPage(props: { onLoggedIn: (user: UserResponse) => v
   return (
     <div className="loginPage">
       <section className="loginHero">
-        <div className="loginHeroMark" />
+        <FlowDeskLogo size={56} className="loginHeroLogo" />
         <h1 className="loginHeroTitle">Manage your team from one place</h1>
         <p className="loginHeroText">
           FlowDesk Admin gives you full visibility into users and tasks across your organization.

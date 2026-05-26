@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import FlowDeskLogo from './FlowDeskLogo';
 import { IconLogout, IconTasks, IconUsers } from './Icons';
 
 type Page = 'users' | 'tasks';
@@ -36,7 +37,7 @@ export default function AdminShell(props: {
     <div className="adminShell">
       <aside className="adminSidebar">
         <div className="adminBrand">
-          <div className="adminBrandMark" />
+          <FlowDeskLogo size={44} />
           <div>
             <div className="adminBrandTitle">FlowDesk</div>
             <div className="adminBrandSubtitle">Admin Console</div>
