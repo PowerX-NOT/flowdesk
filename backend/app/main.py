@@ -66,15 +66,25 @@ app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(SlowAPIMiddleware)
 
 _origins = settings.get_allowed_origins()
-if _origins:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=_origins,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
-        max_age=600,
-    )
+cors_allow_credentials = True
+cors_allow_origins = _origins
+if not cors_allow_origins:
+    # If ALLOWED_ORIGINS isn't configured, still allow preflight requests
+    # so browser-based clients can communicate with the API.
+    #
+    # NOTE: Using wildcard origins with credentials is invalid for browsers,
+    # so we disable credentials in that fallback mode.
+    cors_allow_credentials = False
+    cors_allow_origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_allow_origins,
+    allow_credentials=cors_allow_credentials,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    max_age=600,
+)
 
 
 @app.middleware("http")
