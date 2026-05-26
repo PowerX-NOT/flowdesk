@@ -3,8 +3,8 @@ import type { UserResponse } from '../lib/types';
 import { clearTokens, login } from '../lib/api';
 
 export default function LoginPage(props: { onLoggedIn: (user: UserResponse) => void }) {
-  const [email, setEmail] = useState('pugal1@company.com');
-  const [password, setPassword] = useState('pugalarchive1');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
