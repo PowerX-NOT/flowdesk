@@ -4,9 +4,7 @@ import 'package:flow_desk/data/datasources/auth_remote_datasource.dart';
 import 'package:flow_desk/domain/entities/user_entity.dart';
 import 'package:flow_desk/domain/repositories/auth_repository.dart';
 
-/// Concrete implementation of [AuthRepository].
-/// Stores JWT token securely in Keychain (iOS) / Keystore (Android)
-/// via flutter_secure_storage — NOT SharedPreferences or memory.
+/// Stores JWT tokens in Keychain (iOS) / Keystore (Android) via flutter_secure_storage.
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource _dataSource;
   final FlutterSecureStorage _secureStorage;
@@ -18,10 +16,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
   }) async {
-    final token = await _dataSource.login(email: email, password: password);
-    // Store token securely — accessible only by this app
-    await _secureStorage.write(key: AppConstants.accessTokenKey, value: token);
-    return token;
+    final tokens = await _dataSource.login(email: email, password: password);
+    await _persistTokens(tokens);
+    return tokens.accessToken;
   }
 
   @override
@@ -44,13 +41,42 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> logout() async {
-    // Delete token from secure storage — session cleared
     await _secureStorage.delete(key: AppConstants.accessTokenKey);
+    await _secureStorage.delete(key: AppConstants.refreshTokenKey);
   }
 
   @override
   Future<bool> isAuthenticated() async {
     final token = await _secureStorage.read(key: AppConstants.accessTokenKey);
     return token != null && token.isNotEmpty;
+  }
+
+  /// Attempt silent refresh when access token expired but refresh token exists.
+  @override
+  Future<bool> refreshSessionIfNeeded() async {
+    final refresh = await _secureStorage.read(key: AppConstants.refreshTokenKey);
+    if (refresh == null || refresh.isEmpty) return false;
+    try {
+      final tokens = await _dataSource.refreshSession(refresh);
+      await _persistTokens(tokens);
+      return true;
+    } catch (_) {
+      await logout();
+      return false;
+    }
+  }
+
+  Future<void> _persistTokens(AuthTokens tokens) async {
+    await _secureStorage.write(
+      key: AppConstants.accessTokenKey,
+      value: tokens.accessToken,
+    );
+    final refresh = tokens.refreshToken;
+    if (refresh != null && refresh.isNotEmpty) {
+      await _secureStorage.write(
+        key: AppConstants.refreshTokenKey,
+        value: refresh,
+      );
+    }
   }
 }

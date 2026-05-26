@@ -21,4 +21,7 @@ abstract class AuthRepository {
 
   /// Returns true if a valid token exists in secure storage
   Future<bool> isAuthenticated();
+
+  /// Refresh access token using stored refresh token; returns false if unavailable
+  Future<bool> refreshSessionIfNeeded();
 }

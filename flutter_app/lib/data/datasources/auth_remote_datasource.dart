@@ -1,14 +1,21 @@
 import 'package:dio/dio.dart';
+import 'package:flow_desk/core/errors/failures.dart';
 import 'package:flow_desk/data/datasources/api_client.dart';
 import 'package:flow_desk/data/models/user_model.dart';
-import 'package:flow_desk/core/errors/failures.dart';
+
+class AuthTokens {
+  final String accessToken;
+  final String? refreshToken;
+
+  const AuthTokens({required this.accessToken, this.refreshToken});
+}
 
 /// Remote data source for all auth API calls
 class AuthRemoteDataSource {
   final ApiClient _apiClient;
   AuthRemoteDataSource(this._apiClient);
 
-  Future<String> login({
+  Future<AuthTokens> login({
     required String email,
     required String password,
   }) async {
@@ -17,11 +24,35 @@ class AuthRemoteDataSource {
         '/auth/login',
         data: {'email': email, 'password': password},
       );
-      final token = response.data['access_token'] as String?;
-      if (token == null || token.isEmpty) {
+      final data = response.data as Map<String, dynamic>;
+      final access = data['access_token'] as String?;
+      if (access == null || access.isEmpty) {
         throw const ServerFailure('Invalid response from server.');
       }
-      return token;
+      return AuthTokens(
+        accessToken: access,
+        refreshToken: data['refresh_token'] as String?,
+      );
+    } on DioException catch (e) {
+      throw e.failure;
+    }
+  }
+
+  Future<AuthTokens> refreshSession(String refreshToken) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/auth/refresh',
+        data: {'refresh_token': refreshToken},
+      );
+      final data = response.data as Map<String, dynamic>;
+      final access = data['access_token'] as String?;
+      if (access == null || access.isEmpty) {
+        throw const UnauthorizedFailure();
+      }
+      return AuthTokens(
+        accessToken: access,
+        refreshToken: data['refresh_token'] as String?,
+      );
     } on DioException catch (e) {
       throw e.failure;
     }
