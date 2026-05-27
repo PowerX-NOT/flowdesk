@@ -5,7 +5,7 @@ type FlowDeskLogoProps = {
   className?: string;
 };
 
-/** App-icon style: gradient squircle + clipboard check (matches FlowDesk brand mockups) */
+/** Gradient squircle + circle check mark (FlowDesk app icon) */
 export default function FlowDeskLogo({ size = 44, className = '' }: FlowDeskLogoProps) {
   const gradId = useId().replace(/:/g, '');
 
@@ -21,22 +21,21 @@ export default function FlowDeskLogo({ size = 44, className = '' }: FlowDeskLogo
       aria-label="FlowDesk"
     >
       <defs>
-        <linearGradient id={gradId} x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#9B8AF8" />
-          <stop offset="0.45" stopColor="#7C6EF0" />
-          <stop offset="1" stopColor="#5C6BC0" />
+        <linearGradient id={gradId} x1="4" y1="24" x2="44" y2="24" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#A995F5" />
+          <stop offset="1" stopColor="#7056EB" />
         </linearGradient>
       </defs>
       <rect width="48" height="48" rx="13" fill={`url(#${gradId})`} />
       <g
-        stroke="#fff"
-        strokeWidth="2.35"
+        stroke="#FFFFFF"
+        fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
-        fill="none"
+        strokeWidth="2.5"
       >
-        <path d="M17 14h14v2.2h2.4a2.4 2.4 0 0 1 2.4 2.4v15.6a2.4 2.4 0 0 1-2.4 2.4H14.6a2.4 2.4 0 0 1-2.4-2.4V18.6a2.4 2.4 0 0 1 2.4-2.4H17V14z" />
-        <path d="M19.2 25.2 22.2 28.2 29.8 20.2" strokeWidth="2.6" />
+        <path d="M34 23.08V24a10 10 0 1 1-5.93-9.14" />
+        <path d="M34 16 24 26.01 21 23.01" />
       </g>
     </svg>
   );

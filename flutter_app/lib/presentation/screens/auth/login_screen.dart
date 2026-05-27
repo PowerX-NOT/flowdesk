@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flow_desk/core/constants/app_constants.dart';
 import 'package:flow_desk/core/constants/app_routes.dart';
 import 'package:flow_desk/core/theme/app_theme.dart';
 import 'package:flow_desk/core/utils/validators.dart';
 import 'package:flow_desk/presentation/providers/app_providers.dart';
 import 'package:flow_desk/presentation/widgets/common_widgets.dart';
+import 'package:flow_desk/presentation/widgets/flow_desk_logo.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -119,21 +119,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       // Logo & Title
                       Row(
                         children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [FlowDeskColors.primary, Color(0xFF7C4DFF)],
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: const Icon(Icons.task_alt_rounded,
-                                color: Colors.white, size: 26),
-                          ),
+                          const FlowDeskLogo(size: 48),
                           const SizedBox(width: 12),
                           Text(
-                            AppConstants.appName,
+                            'FlowDesk',
                             style: theme.textTheme.headlineLarge?.copyWith(
                               fontSize: 28,
                               letterSpacing: -0.5,
